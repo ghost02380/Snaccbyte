@@ -1,68 +1,136 @@
+/**
+ * Media Converter Logic
+ * Handles UI state, file validation, and Fetch API interaction.
+ */
 document.addEventListener('DOMContentLoaded', () => {
+    // DOM Elements
     const form = document.getElementById('convertForm');
     const fileInput = document.getElementById('fileInput');
-    const fileNameDisplay = document.getElementById('fileName');
     const dropZone = document.getElementById('dropZone');
-    const convertBtn = document.getElementById('convertBtn');
+    const emptyState = document.getElementById('emptyState');
+    const fileState = document.getElementById('fileState');
+    const fileNameDisplay = document.getElementById('fileName');
+    const formatSelect = document.getElementById('formatSelect');
+    const typeRadios = document.getElementsByName('type');
 
-    const loadingDiv = document.getElementById('loading');
-    const resultDiv = document.getElementById('result');
-    const errorDiv = document.getElementById('error');
+    const loadingArea = document.getElementById('loadingArea');
+    const resultArea = document.getElementById('resultArea');
     const downloadLink = document.getElementById('downloadLink');
     const resetBtn = document.getElementById('resetBtn');
-    const errorMsg = document.querySelector('.error-msg');
+
+    // Format definitions
+    const formats = {
+        video: [
+            { value: 'mp4', label: 'MP4 (Universal)' },
+            { value: 'mkv', label: 'MKV (High Quality)' },
+            { value: 'avi', label: 'AVI (Legacy)' },
+            { value: 'mov', label: 'MOV (Apple)' },
+            { value: 'webm', label: 'WEBM (Web)' },
+            { value: 'flv', label: 'FLV (Flash)' },
+            { value: 'wmv', label: 'WMV (Windows)' },
+            { value: 'gif', label: 'GIF (Animated)' }
+        ],
+        audio: [
+            { value: 'mp3', label: 'MP3 (Standard)' },
+            { value: 'wav', label: 'WAV (Lossless)' },
+            { value: 'flac', label: 'FLAC (Lossless)' },
+            { value: 'aac', label: 'AAC (Apple/Web)' },
+            { value: 'ogg', label: 'OGG (Vorbis)' },
+            { value: 'm4a', label: 'M4A (Mobile)' },
+            { value: 'wma', label: 'WMA (Windows)' },
+            { value: 'opus', label: 'OPUS (Streaming)' }
+        ]
+    };
 
     /**
-     * Updates the UI to show the selected filename.
+     * Updates the dropdown options based on selected type (audio/video).
+     * @param {string} type - 'audio' or 'video'
      */
-    fileInput.addEventListener('change', () => {
-        if (fileInput.files.length > 0) {
-            fileNameDisplay.textContent = fileInput.files[0].name;
-        } else {
-            fileNameDisplay.textContent = '';
-        }
+    function populateFormats(type) {
+        formatSelect.innerHTML = '';
+        formats[type].forEach(fmt => {
+            const option = document.createElement('option');
+            option.value = fmt.value;
+            option.textContent = fmt.label;
+            formatSelect.appendChild(option);
+        });
+    }
+
+    // Event Listeners for Switch
+    typeRadios.forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            populateFormats(e.target.value);
+        });
     });
 
+    // Initialize with video
+    populateFormats('video');
+
     /**
-     * Adds visual feedback for drag and drop events.
+     * UI Helper: Toggle File Display
      */
+    function updateFileUI() {
+        if (fileInput.files.length > 0) {
+            emptyState.classList.add('hidden');
+            fileState.classList.remove('hidden');
+            fileState.classList.add('flex');
+            fileNameDisplay.textContent = fileInput.files[0].name;
+            dropZone.classList.add('border-primary', 'bg-primary/10');
+        } else {
+            emptyState.classList.remove('hidden');
+            fileState.classList.add('hidden');
+            fileState.classList.remove('flex');
+            fileNameDisplay.textContent = '';
+            dropZone.classList.remove('border-primary', 'bg-primary/10');
+        }
+    }
+
+    // Drag and Drop Handlers
+    dropZone.addEventListener('click', () => fileInput.click());
+
     dropZone.addEventListener('dragover', (e) => {
         e.preventDefault();
-        dropZone.classList.add('dragover');
+        dropZone.classList.add('border-primary', 'bg-primary/5');
     });
 
     dropZone.addEventListener('dragleave', () => {
-        dropZone.classList.remove('dragover');
+        dropZone.classList.remove('border-primary', 'bg-primary/5');
     });
 
     dropZone.addEventListener('drop', (e) => {
         e.preventDefault();
-        dropZone.classList.remove('dragover');
+        dropZone.classList.remove('border-primary', 'bg-primary/5');
 
         if (e.dataTransfer.files.length > 0) {
             fileInput.files = e.dataTransfer.files;
-            // Trigger change event manually
-            const event = new Event('change');
-            fileInput.dispatchEvent(event);
+            updateFileUI();
         }
     });
 
+    fileInput.addEventListener('change', updateFileUI);
+
     /**
-     * Handles the form submission via Fetch API.
+     * Form Submission Handler
      */
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
 
         if (fileInput.files.length === 0) {
-            showError("Please select a file first.");
+            Swal.fire({
+                icon: 'warning',
+                title: 'No File Selected',
+                text: 'Please upload a media file to continue.',
+                confirmButtonColor: '#4f46e5',
+                background: '#1e293b',
+                color: '#fff'
+            });
             return;
         }
 
-        // UI State: Converting
+        // Switch to Loading State
         form.classList.add('hidden');
-        loadingDiv.classList.remove('hidden');
-        errorDiv.classList.add('hidden');
-        resultDiv.classList.add('hidden');
+        loadingArea.classList.remove('hidden');
+        loadingArea.classList.add('flex');
 
         const formData = new FormData(form);
 
@@ -74,52 +142,60 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (!response.ok) {
                 const errorText = await response.text();
-                throw new Error(errorText || "Conversion failed.");
+                throw new Error(errorText);
             }
 
-            // Get the filename from the Content-Disposition header if possible
-            const contentDisposition = response.headers.get('Content-Disposition');
-            let filename = "converted_file";
-            if (contentDisposition) {
-                const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
-                if (filenameMatch.length === 2)
-                    filename = filenameMatch[1];
+            // Extract filename from header
+            const disposition = response.headers.get('Content-Disposition');
+            let filename = "converted." + formatSelect.value;
+            if (disposition && disposition.includes('filename=')) {
+                const match = disposition.match(/filename="?([^"]+)"?/);
+                if (match && match[1]) filename = match[1];
             }
 
-            // Convert response to Blob for download
             const blob = await response.blob();
             const url = window.URL.createObjectURL(blob);
 
-            // UI State: Success
-            loadingDiv.classList.add('hidden');
-            resultDiv.classList.remove('hidden');
-
+            // Update Download Button
             downloadLink.href = url;
             downloadLink.download = filename;
 
+            // Show Success
+            loadingArea.classList.add('hidden');
+            loadingArea.classList.remove('flex');
+            resultArea.classList.remove('hidden');
+
         } catch (error) {
-            showError(error.message);
+            // Reset to Form
+            loadingArea.classList.add('hidden');
+            loadingArea.classList.remove('flex');
             form.classList.remove('hidden');
-            loadingDiv.classList.add('hidden');
+
+            Swal.fire({
+                icon: 'error',
+                title: 'Conversion Failed',
+                text: error.message || 'An unknown error occurred.',
+                confirmButtonColor: '#ef4444',
+                background: '#1e293b',
+                color: '#fff'
+            });
         }
     });
 
     /**
-     * Resets the UI to allow a new conversion.
+     * Reset Button Handler
      */
     resetBtn.addEventListener('click', () => {
         form.reset();
-        fileNameDisplay.textContent = '';
-        resultDiv.classList.add('hidden');
+        // Reset file input manually
+        fileInput.value = '';
+        updateFileUI();
+
+        // Check defaults
+        document.querySelector('input[value="video"]').checked = true;
+        populateFormats('video');
+
+        resultArea.classList.add('hidden');
         form.classList.remove('hidden');
     });
-
-    /**
-     * Helper function to display error messages.
-     * @param {string} message - The error message to display.
-     */
-    function showError(message) {
-        errorMsg.textContent = message;
-        errorDiv.classList.remove('hidden');
-    }
 });

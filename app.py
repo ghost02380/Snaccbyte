@@ -2,18 +2,19 @@ import os
 import subprocess
 import uuid
 from flask import Flask, render_template, request, send_file, after_this_request
-
-# Import static_ffmpeg to handle binaries automatically via pip
 import static_ffmpeg
 
+# Initialize Flask application
 app = Flask(__name__)
 
-# This function downloads the ffmpeg binaries if missing and adds them to the PATH
+# Initialize static_ffmpeg to ensure binaries are present
 static_ffmpeg.add_paths()
 
-# Configuration for upload and output directories
+# Configuration for storage paths
 UPLOAD_FOLDER = 'uploads'
 CONVERTED_FOLDER = 'converted'
+
+# Ensure directories exist
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(CONVERTED_FOLDER, exist_ok=True)
 
@@ -23,29 +24,41 @@ app.config['CONVERTED_FOLDER'] = CONVERTED_FOLDER
 @app.route('/')
 def index():
     """
-    Renders the main page of the application.
+    Renders the main application interface.
+
+    :return: HTML content of the landing page.
     """
     return render_template('index.html')
 
 @app.route('/convert', methods=['POST'])
 def convert_file():
     """
-    Handles file upload, conversion process using FFmpeg, and returns the converted file.
+    Handles the file upload and conversion process.
+
+    1. Validates the file.
+    2. Saves it temporarily.
+    3. Runs FFmpeg conversion.
+    4. Returns the file to the user.
+    5. Cleans up temporary files after the request.
+
+    :return: File download response or Error message.
     """
+    # Check if file part is present in request
     if 'file' not in request.files:
         return "No file part", 400
 
     file = request.files['file']
     target_format = request.form.get('format')
 
+    # Check if a file was actually selected
     if file.filename == '':
         return "No selected file", 400
 
     if file and target_format:
-        # Generate unique filenames to prevent collisions
+        # Generate unique IDs to prevent filename collisions
         unique_id = str(uuid.uuid4())
         original_filename = file.filename
-        file_ext = os.path.splitext(original_filename)[1]
+        _, file_ext = os.path.splitext(original_filename)
 
         input_filename = f"{unique_id}{file_ext}"
         output_filename = f"{unique_id}.{target_format}"
@@ -53,23 +66,25 @@ def convert_file():
         input_path = os.path.join(app.config['UPLOAD_FOLDER'], input_filename)
         output_path = os.path.join(app.config['CONVERTED_FOLDER'], output_filename)
 
-        # Save the uploaded file to the server
+        # Save the uploaded file
         file.save(input_path)
 
         try:
-            # Construct the FFmpeg command
-            # Since static_ffmpeg.add_paths() was called, 'ffmpeg' is now recognized
+            # Construct FFmpeg command
+            # -y: Overwrite output files
+            # -preset fast: balance between speed and compression
             command = [
                 'ffmpeg',
                 '-i', input_path,
                 '-y',
+                '-preset', 'fast',
                 output_path
             ]
 
-            # Execute the conversion command
+            # Execute the command
             subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-            # Schedule file deletion after the response is sent to save space
+            # Register a callback to delete files after the response is sent
             @after_this_request
             def remove_files(response):
                 try:
@@ -78,25 +93,30 @@ def convert_file():
                     if os.path.exists(output_path):
                         os.remove(output_path)
                 except Exception as e:
-                    print(f"Error removing files: {e}")
+                    app.logger.error(f"Error cleaning up files: {e}")
                 return response
 
-            # Send the converted file to the user
+            # Determine download filename
+            download_name = f"converted_{os.path.splitext(original_filename)[0]}.{target_format}"
+
+            # Send file to client
             return send_file(
                 output_path,
                 as_attachment=True,
-                download_name=f"converted_{os.path.splitext(original_filename)[0]}.{target_format}"
+                download_name=download_name
             )
 
         except subprocess.CalledProcessError as e:
-            # Log the error output from ffmpeg for debugging
+            # Handle FFmpeg errors (e.g., incompatible formats)
             print(f"FFmpeg Error: {e.stderr.decode()}")
-            return f"Conversion failed. The file might be corrupt or the format not supported.", 500
+            return "Conversion failed. The file might be corrupt or the format is not supported.", 500
         except Exception as e:
+            # Handle general server errors
+            print(f"General Error: {str(e)}")
             return f"An error occurred: {str(e)}", 500
 
     return "Invalid request", 400
 
 if __name__ == '__main__':
-    # Run the Flask application
-    app.run(host='0.0.0.0', port=80, debug=False)
+    # Run on port 80, listen on all interfaces
+    app.run(host='0.0.0.0', port=80, debug=True)

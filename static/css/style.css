@@ -1,210 +1,84 @@
-/* Global Reset and Variables */
-:root {
-    --primary-blue: #2563eb;
-    --dark-blue: #1e40af;
-    --light-blue: #dbeafe;
-    --bg-gradient: linear-gradient(135deg, #1e3a8a, #3b82f6);
-    --white: #ffffff;
-    --text-dark: #1f2937;
-    --text-light: #6b7280;
-    --border-radius: 12px;
-    --transition: all 0.3s ease;
-}
-
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-}
-
-body {
-    background: var(--bg-gradient);
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-}
-
-/* Main Container */
-.container {
-    width: 100%;
-    max-width: 500px;
-    text-align: center;
-}
-
-header {
-    margin-bottom: 20px;
-    color: var(--white);
-}
-
-header h1 {
-    font-size: 2.5rem;
-    margin-bottom: 10px;
-}
-
-header p {
-    font-size: 1.1rem;
-    opacity: 0.9;
-}
-
-/* Card Styling */
-.converter-card {
-    background: var(--white);
-    padding: 40px;
-    border-radius: var(--border-radius);
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-}
-
-/* Upload Area */
-.upload-area {
-    border: 2px dashed var(--primary-blue);
-    border-radius: var(--border-radius);
-    padding: 30px;
-    cursor: pointer;
-    background-color: #f8fafc;
-    transition: var(--transition);
-    position: relative;
-    margin-bottom: 20px;
-}
-
-.upload-area:hover, .upload-area.dragover {
-    background-color: var(--light-blue);
-    border-color: var(--dark-blue);
-}
-
-.upload-area i {
-    font-size: 3rem;
-    color: var(--primary-blue);
-    margin-bottom: 10px;
-}
-
-.upload-area p {
-    color: var(--text-light);
-}
-
-.upload-area input[type="file"] {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    top: 0;
-    left: 0;
-    opacity: 0;
-    cursor: pointer;
-}
-
-.file-name {
-    margin-top: 10px;
-    font-weight: bold;
-    color: var(--text-dark);
-    word-break: break-all;
-}
-
-/* Options Area */
-.options-area {
-    margin-bottom: 25px;
-    text-align: left;
-}
-
-.options-area label {
-    display: block;
-    margin-bottom: 8px;
-    color: var(--text-dark);
-    font-weight: 600;
-}
-
-.options-area select {
-    width: 100%;
-    padding: 12px;
-    border: 1px solid #cbd5e1;
-    border-radius: 8px;
-    font-size: 1rem;
-    outline: none;
-}
-
-.options-area select:focus {
-    border-color: var(--primary-blue);
-}
-
-/* Buttons */
-.btn-primary, .btn-download, .btn-secondary {
-    display: inline-block;
-    width: 100%;
-    padding: 14px;
-    border: none;
-    border-radius: 8px;
-    font-size: 1rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: var(--transition);
-    text-decoration: none;
-    text-align: center;
-}
-
-.btn-primary {
-    background-color: var(--primary-blue);
-    color: var(--white);
-}
-
-.btn-primary:hover {
-    background-color: var(--dark-blue);
-    transform: translateY(-2px);
-}
-
-.btn-download {
-    background-color: #10b981;
-    color: var(--white);
-    margin-bottom: 10px;
-}
-
-.btn-download:hover {
-    background-color: #059669;
-}
-
-.btn-secondary {
-    background-color: #e2e8f0;
-    color: var(--text-dark);
-}
-
-.btn-secondary:hover {
-    background-color: #cbd5e1;
-}
-
-/* Utility Classes */
-.hidden {
-    display: none;
-}
-
-/* Loading Spinner */
-#loading {
-    margin-top: 20px;
-}
-
-.spinner {
-    width: 40px;
-    height: 40px;
-    border: 4px solid var(--light-blue);
-    border-top: 4px solid var(--primary-blue);
+.custom-loader {
+    width: 48px;
+    height: 48px;
+    border: 5px solid rgba(255, 255, 255, 0.3); /* Light transparent white */
+    border-bottom-color: #4f46e5; /* Indigo-600 to match theme */
     border-radius: 50%;
-    margin: 0 auto 15px;
-    animation: spin 1s linear infinite;
+    display: inline-block;
+    box-sizing: border-box;
+    animation: rotation 1s linear infinite;
 }
 
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+@keyframes rotation {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
-/* Messages */
-.success-msg {
-    color: #10b981;
-    font-size: 1.2rem;
-    margin-bottom: 15px;
-    font-weight: bold;
+/* Fade In Animation for UI Elements */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
-.error-msg {
-    color: #ef4444;
-    margin-top: 15px;
+.animate-fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+}
+
+/* Blob Animation for Background Decoration */
+@keyframes blob {
+    0% {
+        transform: translate(0px, 0px) scale(1);
+    }
+    33% {
+        transform: translate(30px, -50px) scale(1.1);
+    }
+    66% {
+        transform: translate(-20px, 20px) scale(0.9);
+    }
+    100% {
+        transform: translate(0px, 0px) scale(1);
+    }
+}
+
+.animate-blob {
+    animation: blob 7s infinite;
+}
+
+.animation-delay-2000 {
+    animation-delay: 2s;
+}
+
+.animation-delay-4000 {
+    animation-delay: 4s;
+}
+
+/*
+ * Scrollbar Customization
+ * Works primarily in Webkit browsers (Chrome, Edge, Safari)
+ */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #0f172a; /* Slate 900 */
+}
+
+::-webkit-scrollbar-thumb {
+    background: #334155; /* Slate 700 */
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #475569; /* Slate 600 */
 }
