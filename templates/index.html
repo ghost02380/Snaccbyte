@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universal Media Converter</title>
+    <!-- Link to the external CSS file -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1><i class="fas fa-sync-alt"></i> Media Converter</h1>
+        <p>Convert Audio & Video formats for free.</p>
+    </header>
+
+    <div class="converter-card">
+        <form id="convertForm">
+            <!-- File Upload Area -->
+            <div class="upload-area" id="dropZone">
+                <i class="fas fa-cloud-upload-alt"></i>
+                <p>Drag & Drop files here or click to browse</p>
+                <input type="file" id="fileInput" name="file" required accept="audio/*,video/*">
+                <div id="fileName" class="file-name"></div>
+            </div>
+
+            <!-- Format Selection -->
+            <div class="options-area">
+                <label for="formatSelect">Convert to:</label>
+                <select id="formatSelect" name="format" required>
+                    <optgroup label="Audio">
+                        <option value="mp3">MP3</option>
+                        <option value="ogg">OGG</option>
+                        <option value="wav">WAV</option>
+                        <option value="m4a">M4A</option>
+                        <option value="flac">FLAC</option>
+                    </optgroup>
+                    <optgroup label="Video">
+                        <option value="mp4" selected>MP4</option>
+                        <option value="mov">MOV</option>
+                        <option value="avi">AVI</option>
+                        <option value="mkv">MKV</option>
+                        <option value="webm">WEBM</option>
+                    </optgroup>
+                </select>
+            </div>
+
+            <!-- Action Button -->
+            <button type="submit" id="convertBtn" class="btn-primary">
+                Convert Now
+            </button>
+        </form>
+
+        <!-- Loading Indicator -->
+        <div id="loading" class="hidden">
+            <div class="spinner"></div>
+            <p>Converting... Please wait.</p>
+        </div>
+
+        <!-- Result Area -->
+        <div id="result" class="hidden">
+            <p class="success-msg"><i class="fas fa-check-circle"></i> Conversion Complete!</p>
+            <a id="downloadLink" href="#" class="btn-download">Download File</a>
+            <button id="resetBtn" class="btn-secondary">Convert Another</button>
+        </div>
+
+        <!-- Error Area -->
+        <div id="error" class="hidden">
+            <p class="error-msg"></p>
+        </div>
+    </div>
+</div>
+
+<!-- Link to the external JavaScript file -->
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
