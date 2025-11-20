@@ -1,6 +1,6 @@
 /**
  * Media Converter Logic
- * Handles UI state, file validation, and Fetch API interaction.
+ * Handles UI state, file validation, format selection, and API communication.
  */
 document.addEventListener('DOMContentLoaded', () => {
     // DOM Elements
@@ -18,53 +18,77 @@ document.addEventListener('DOMContentLoaded', () => {
     const downloadLink = document.getElementById('downloadLink');
     const resetBtn = document.getElementById('resetBtn');
 
-    // Format definitions
-    const formats = {
-        video: [
-            { value: 'mp4', label: 'MP4 (Universal)' },
-            { value: 'mkv', label: 'MKV (High Quality)' },
-            { value: 'avi', label: 'AVI (Legacy)' },
-            { value: 'mov', label: 'MOV (Apple)' },
-            { value: 'webm', label: 'WEBM (Web)' },
-            { value: 'flv', label: 'FLV (Flash)' },
-            { value: 'wmv', label: 'WMV (Windows)' },
-            { value: 'gif', label: 'GIF (Animated)' }
-        ],
-        audio: [
-            { value: 'mp3', label: 'MP3 (Standard)' },
-            { value: 'wav', label: 'WAV (Lossless)' },
-            { value: 'flac', label: 'FLAC (Lossless)' },
-            { value: 'aac', label: 'AAC (Apple/Web)' },
-            { value: 'ogg', label: 'OGG (Vorbis)' },
-            { value: 'm4a', label: 'M4A (Mobile)' },
-            { value: 'wma', label: 'WMA (Windows)' },
-            { value: 'opus', label: 'OPUS (Streaming)' }
-        ]
+    // Configuration: Available formats and accept attributes
+    const formatData = {
+        video: {
+            accept: "video/*",
+            formats: [
+                { value: 'mp4', label: 'MP4 (Universal)' },
+                { value: 'mkv', label: 'MKV (High Quality)' },
+                { value: 'avi', label: 'AVI (Legacy)' },
+                { value: 'mov', label: 'MOV (Apple)' },
+                { value: 'webm', label: 'WEBM (Web)' },
+                { value: 'gif', label: 'GIF (Animated)' }
+            ]
+        },
+        audio: {
+            accept: "audio/*",
+            formats: [
+                { value: 'mp3', label: 'MP3 (Standard)' },
+                { value: 'wav', label: 'WAV (Lossless)' },
+                { value: 'flac', label: 'FLAC (Lossless)' },
+                { value: 'aac', label: 'AAC (Apple/Web)' },
+                { value: 'ogg', label: 'OGG (Vorbis)' },
+                { value: 'opus', label: 'OPUS (Streaming)' }
+            ]
+        },
+        image: {
+            accept: "image/*",
+            formats: [
+                { value: 'png', label: 'PNG (Transparent)' },
+                { value: 'jpg', label: 'JPG (Small Size)' },
+                { value: 'webp', label: 'WEBP (Modern Web)' },
+                { value: 'gif', label: 'GIF (Animated)' },
+                { value: 'ico', label: 'ICO (Favicon)' },
+                { value: 'bmp', label: 'BMP (Bitmap)' },
+                { value: 'tiff', label: 'TIFF (Print)' }
+            ]
+        }
     };
 
     /**
-     * Updates the dropdown options based on selected type (audio/video).
-     * @param {string} type - 'audio' or 'video'
+     * Updates the UI based on the selected media type (audio/video/image).
+     * 1. Populates the format dropdown.
+     * 2. Updates the file input 'accept' attribute to filter file picker.
+     *
+     * @param {string} type - 'audio', 'video', or 'image'
      */
-    function populateFormats(type) {
+    function setMediaType(type) {
+        // 1. Clear and populate formats
         formatSelect.innerHTML = '';
-        formats[type].forEach(fmt => {
+        const data = formatData[type];
+
+        data.formats.forEach(fmt => {
             const option = document.createElement('option');
             option.value = fmt.value;
             option.textContent = fmt.label;
             formatSelect.appendChild(option);
         });
+
+        // 2. Update File Picker filter
+        fileInput.setAttribute('accept', data.accept);
     }
 
     // Event Listeners for Switch
     typeRadios.forEach(radio => {
         radio.addEventListener('change', (e) => {
-            populateFormats(e.target.value);
+            setMediaType(e.target.value);
         });
     });
 
-    // Initialize with video
-    populateFormats('video');
+    // Initialize with default selection (usually video)
+    const initialType = document.querySelector('input[name="type"]:checked').value;
+    setMediaType(initialType);
 
     /**
      * UI Helper: Toggle File Display
@@ -119,7 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
             Swal.fire({
                 icon: 'warning',
                 title: 'No File Selected',
-                text: 'Please upload a media file to continue.',
+                text: 'Please upload a file to continue.',
                 confirmButtonColor: '#4f46e5',
                 background: '#1e293b',
                 color: '#fff'
@@ -166,7 +190,7 @@ document.addEventListener('DOMContentLoaded', () => {
             resultArea.classList.remove('hidden');
 
         } catch (error) {
-            // Reset to Form
+            // Reset to Form on error
             loadingArea.classList.add('hidden');
             loadingArea.classList.remove('flex');
             form.classList.remove('hidden');
@@ -191,9 +215,10 @@ document.addEventListener('DOMContentLoaded', () => {
         fileInput.value = '';
         updateFileUI();
 
-        // Check defaults
-        document.querySelector('input[value="video"]').checked = true;
-        populateFormats('video');
+        // Reset to Video
+        const videoRadio = document.querySelector('input[value="video"]');
+        videoRadio.checked = true;
+        setMediaType('video');
 
         resultArea.classList.add('hidden');
         form.classList.remove('hidden');

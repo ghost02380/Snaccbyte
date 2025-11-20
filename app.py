@@ -33,11 +33,11 @@ def index():
 @app.route('/convert', methods=['POST'])
 def convert_file():
     """
-    Handles the file upload and conversion process.
+    Handles the file upload and conversion process for Video, Audio, and Images.
 
     1. Validates the file.
     2. Saves it temporarily.
-    3. Runs FFmpeg conversion.
+    3. Runs FFmpeg conversion (works for images too).
     4. Returns the file to the user.
     5. Cleans up temporary files after the request.
 
@@ -71,17 +71,16 @@ def convert_file():
 
         try:
             # Construct FFmpeg command
-            # -y: Overwrite output files
-            # -preset fast: balance between speed and compression
+            # FFmpeg detects image formats automatically based on extension
             command = [
                 'ffmpeg',
                 '-i', input_path,
-                '-y',
-                '-preset', 'fast',
+                '-y',               # Overwrite output files
                 output_path
             ]
 
             # Execute the command
+            # Using subprocess to call the FFmpeg binary
             subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
             # Register a callback to delete files after the response is sent
@@ -107,8 +106,9 @@ def convert_file():
             )
 
         except subprocess.CalledProcessError as e:
-            # Handle FFmpeg errors (e.g., incompatible formats)
-            print(f"FFmpeg Error: {e.stderr.decode()}")
+            # Handle FFmpeg errors
+            error_msg = e.stderr.decode()
+            print(f"FFmpeg Error: {error_msg}")
             return "Conversion failed. The file might be corrupt or the format is not supported.", 500
         except Exception as e:
             # Handle general server errors
