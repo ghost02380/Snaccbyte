@@ -1,9 +1,13 @@
+import { videoConfig } from './video.js';
+import { audioConfig } from './audio.js';
+import { pictureConfig } from './picture.js';
+
 /**
- * Media Converter Logic
- * Handles UI state, file validation, format selection, and API communication.
+ * Main Controller for Snaccbyte.
+ * Handles DOM manipulation, Event Listeners, and API communication.
  */
 document.addEventListener('DOMContentLoaded', () => {
-    // DOM Elements
+    // DOM Elements references
     const form = document.getElementById('convertForm');
     const fileInput = document.getElementById('fileInput');
     const dropZone = document.getElementById('dropZone');
@@ -18,80 +22,44 @@ document.addEventListener('DOMContentLoaded', () => {
     const downloadLink = document.getElementById('downloadLink');
     const resetBtn = document.getElementById('resetBtn');
 
-    // Configuration: Available formats and accept attributes
-    const formatData = {
-        video: {
-            accept: "video/*",
-            formats: [
-                { value: 'mp4', label: 'MP4 (Universal)' },
-                { value: 'mkv', label: 'MKV (High Quality)' },
-                { value: 'avi', label: 'AVI (Legacy)' },
-                { value: 'mov', label: 'MOV (Apple)' },
-                { value: 'webm', label: 'WEBM (Web)' },
-                { value: 'gif', label: 'GIF (Animated)' }
-            ]
-        },
-        audio: {
-            accept: "audio/*",
-            formats: [
-                { value: 'mp3', label: 'MP3 (Standard)' },
-                { value: 'wav', label: 'WAV (Lossless)' },
-                { value: 'flac', label: 'FLAC (Lossless)' },
-                { value: 'aac', label: 'AAC (Apple/Web)' },
-                { value: 'ogg', label: 'OGG (Vorbis)' },
-                { value: 'opus', label: 'OPUS (Streaming)' }
-            ]
-        },
-        image: {
-            accept: "image/*",
-            formats: [
-                { value: 'png', label: 'PNG (Transparent)' },
-                { value: 'jpg', label: 'JPG (Small Size)' },
-                { value: 'webp', label: 'WEBP (Modern Web)' },
-                { value: 'gif', label: 'GIF (Animated)' },
-                { value: 'ico', label: 'ICO (Favicon)' },
-                { value: 'bmp', label: 'BMP (Bitmap)' },
-                { value: 'tiff', label: 'TIFF (Print)' }
-            ]
-        }
+    /**
+     * Aggregate configuration object for easy access based on type keys.
+     */
+    const strategies = {
+        video: videoConfig,
+        audio: audioConfig,
+        image: pictureConfig // Maps 'image' radio value to pictureConfig
     };
 
     /**
-     * Updates the UI based on the selected media type (audio/video/image).
-     * 1. Populates the format dropdown.
-     * 2. Updates the file input 'accept' attribute to filter file picker.
+     * Updates the UI based on the selected media type.
+     * Populates the format dropdown and updates file input constraints.
      *
-     * @param {string} type - 'audio', 'video', or 'image'
+     * @param {string} type - The media type ('video', 'audio', or 'image').
      */
     function setMediaType(type) {
-        // 1. Clear and populate formats
         formatSelect.innerHTML = '';
-        const data = formatData[type];
+        const config = strategies[type];
 
-        data.formats.forEach(fmt => {
+        if (!config) {
+            console.error(`No configuration found for type: ${type}`);
+            return;
+        }
+
+        // Populate dropdown options
+        config.formats.forEach(fmt => {
             const option = document.createElement('option');
             option.value = fmt.value;
             option.textContent = fmt.label;
             formatSelect.appendChild(option);
         });
 
-        // 2. Update File Picker filter
-        fileInput.setAttribute('accept', data.accept);
+        // Update file input filter
+        fileInput.setAttribute('accept', config.accept);
     }
 
-    // Event Listeners for Switch
-    typeRadios.forEach(radio => {
-        radio.addEventListener('change', (e) => {
-            setMediaType(e.target.value);
-        });
-    });
-
-    // Initialize with default selection (usually video)
-    const initialType = document.querySelector('input[name="type"]:checked').value;
-    setMediaType(initialType);
-
     /**
-     * UI Helper: Toggle File Display
+     * Toggles the UI between "Empty" and "File Selected" states.
      */
     function updateFileUI() {
         if (fileInput.files.length > 0) {
@@ -109,7 +77,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Drag and Drop Handlers
+    // --- Event Listeners ---
+
+    // Media Type Switching
+    typeRadios.forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            setMediaType(e.target.value);
+        });
+    });
+
+    // Initialize with the default checked radio button
+    const initialType = document.querySelector('input[name="type"]:checked').value;
+    setMediaType(initialType);
+
+    // Drag and Drop Interactions
     dropZone.addEventListener('click', () => fileInput.click());
 
     dropZone.addEventListener('dragover', (e) => {
@@ -131,11 +112,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // File Input Change
     fileInput.addEventListener('change', updateFileUI);
 
-    /**
-     * Form Submission Handler
-     */
+    // Form Submission
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
 
@@ -151,7 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Switch to Loading State
+        // Transition to Loading State
         form.classList.add('hidden');
         loadingArea.classList.remove('hidden');
         loadingArea.classList.add('flex');
@@ -169,28 +149,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(errorText);
             }
 
-            // Extract filename from header
+            // Extract filename from Content-Disposition header
             const disposition = response.headers.get('Content-Disposition');
-            let filename = "converted." + formatSelect.value;
+            let filename = "snaccbyte_converted." + formatSelect.value;
+
             if (disposition && disposition.includes('filename=')) {
                 const match = disposition.match(/filename="?([^"]+)"?/);
                 if (match && match[1]) filename = match[1];
             }
 
+            // Create Blob URL for download
             const blob = await response.blob();
             const url = window.URL.createObjectURL(blob);
 
-            // Update Download Button
+            // Update Download Link
             downloadLink.href = url;
             downloadLink.download = filename;
 
-            // Show Success
+            // Transition to Result State
             loadingArea.classList.add('hidden');
             loadingArea.classList.remove('flex');
             resultArea.classList.remove('hidden');
 
         } catch (error) {
-            // Reset to Form on error
+            // Handle Errors and reset UI
             loadingArea.classList.add('hidden');
             loadingArea.classList.remove('flex');
             form.classList.remove('hidden');
@@ -206,19 +188,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    /**
-     * Reset Button Handler
-     */
+    // Reset Application State
     resetBtn.addEventListener('click', () => {
         form.reset();
-        // Reset file input manually
         fileInput.value = '';
         updateFileUI();
 
-        // Reset to Video
+        // Reset UI to Video default
         const videoRadio = document.querySelector('input[value="video"]');
-        videoRadio.checked = true;
-        setMediaType('video');
+        if(videoRadio) {
+            videoRadio.checked = true;
+            setMediaType('video');
+        }
 
         resultArea.classList.add('hidden');
         form.classList.remove('hidden');

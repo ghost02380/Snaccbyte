@@ -1,3 +1,9 @@
+/**
+ * Snaccbyte Main Stylesheet.
+ * Handles layout, animations, custom scrollbars, and loader components.
+ */
+
+/* Custom Loader - Rotating Circle with Indigo Accent */
 .custom-loader {
     width: 48px;
     height: 48px;
@@ -9,6 +15,9 @@
     animation: rotation 1s linear infinite;
 }
 
+/**
+ * Rotates the element 360 degrees.
+ */
 @keyframes rotation {
     0% {
         transform: rotate(0deg);
@@ -64,7 +73,7 @@
 
 /*
  * Scrollbar Customization
- * Works primarily in Webkit browsers (Chrome, Edge, Safari)
+ * Targeted for Webkit browsers (Chrome, Edge, Safari).
  */
 ::-webkit-scrollbar {
     width: 8px;

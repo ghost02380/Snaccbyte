@@ -7,14 +7,14 @@ import static_ffmpeg
 # Initialize Flask application
 app = Flask(__name__)
 
-# Initialize static_ffmpeg to ensure binaries are present
+# Initialize static_ffmpeg to ensure binaries are present in the path
 static_ffmpeg.add_paths()
 
 # Configuration for storage paths
 UPLOAD_FOLDER = 'uploads'
 CONVERTED_FOLDER = 'converted'
 
-# Ensure directories exist
+# Ensure working directories exist
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(CONVERTED_FOLDER, exist_ok=True)
 
@@ -24,7 +24,7 @@ app.config['CONVERTED_FOLDER'] = CONVERTED_FOLDER
 @app.route('/')
 def index():
     """
-    Renders the main application interface.
+    Renders the main Snaccbyte interface.
 
     :return: HTML content of the landing page.
     """
@@ -33,29 +33,29 @@ def index():
 @app.route('/convert', methods=['POST'])
 def convert_file():
     """
-    Handles the file upload and conversion process for Video, Audio, and Images.
+    Handles the file upload and conversion process.
 
-    1. Validates the file.
-    2. Saves it temporarily.
-    3. Runs FFmpeg conversion (works for images too).
-    4. Returns the file to the user.
-    5. Cleans up temporary files after the request.
+    1. Validates input file.
+    2. Saves to upload folder with a UUID.
+    3. Invokes FFmpeg for conversion.
+    4. Returns the converted file stream.
+    5. Schedules cleanup of temporary files.
 
-    :return: File download response or Error message.
+    :return: File download response or Error message (HTTP 400/500).
     """
-    # Check if file part is present in request
+    # Check for file part
     if 'file' not in request.files:
         return "No file part", 400
 
     file = request.files['file']
     target_format = request.form.get('format')
 
-    # Check if a file was actually selected
+    # Check for empty filename
     if file.filename == '':
         return "No selected file", 400
 
     if file and target_format:
-        # Generate unique IDs to prevent filename collisions
+        # Generate unique identifiers
         unique_id = str(uuid.uuid4())
         original_filename = file.filename
         _, file_ext = os.path.splitext(original_filename)
@@ -71,19 +71,18 @@ def convert_file():
 
         try:
             # Construct FFmpeg command
-            # FFmpeg detects image formats automatically based on extension
+            # -y forces overwrite if file exists
             command = [
                 'ffmpeg',
                 '-i', input_path,
-                '-y',               # Overwrite output files
+                '-y',
                 output_path
             ]
 
-            # Execute the command
-            # Using subprocess to call the FFmpeg binary
+            # Execute conversion
             subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-            # Register a callback to delete files after the response is sent
+            # Cleanup hook: Deletes files after response is sent
             @after_this_request
             def remove_files(response):
                 try:
@@ -95,10 +94,10 @@ def convert_file():
                     app.logger.error(f"Error cleaning up files: {e}")
                 return response
 
-            # Determine download filename
-            download_name = f"converted_{os.path.splitext(original_filename)[0]}.{target_format}"
+            # Define friendly download filename
+            download_name = f"snaccbyte_{os.path.splitext(original_filename)[0]}.{target_format}"
 
-            # Send file to client
+            # Return the file
             return send_file(
                 output_path,
                 as_attachment=True,
@@ -106,17 +105,16 @@ def convert_file():
             )
 
         except subprocess.CalledProcessError as e:
-            # Handle FFmpeg errors
+            # FFmpeg processing error
             error_msg = e.stderr.decode()
             print(f"FFmpeg Error: {error_msg}")
-            return "Conversion failed. The file might be corrupt or the format is not supported.", 500
+            return "Conversion failed. The file format might be incompatible.", 500
         except Exception as e:
-            # Handle general server errors
+            # General server error
             print(f"General Error: {str(e)}")
-            return f"An error occurred: {str(e)}", 500
+            return f"An internal error occurred: {str(e)}", 500
 
-    return "Invalid request", 400
+    return "Invalid request parameters", 400
 
 if __name__ == '__main__':
-    # Run on port 80, listen on all interfaces
     app.run(host='0.0.0.0', port=80, debug=True)
